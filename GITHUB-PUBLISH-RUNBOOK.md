@@ -1,88 +1,165 @@
 # GitHub Publishing Runbook
 
-This runbook publishes the project in this folder to a new GitHub repository from
-Windows PowerShell. It does not publish a Docker image; see the Docker Hub
-instructions in `README.md` for that workflow.
+This runbook explains how this project was published to GitHub and how to
+verify, update, and publish future changes from Windows PowerShell. It publishes
+source files to GitHub; it does not publish a Docker image. For Docker Hub
+publishing, see `README.md`.
 
-## Important project-specific checks
+## Current repository
 
-Before making a repository public:
+- GitHub repository: `https://github.com/shalthoor/docker-testapp-main`
+- Remote name: `origin`
+- Branch: `main`
+- Initial commit: `2ef1a517ce85312888a7aa45c0a9b229d0001207`
 
-- The Compose YAML files read the MongoDB password from the ignored local
-  `.env` file. Copy `.env.example` to `.env` and set a strong local value before
-  running Compose. Never commit `.env`; rotate any credential that was previously
-  used in a shared environment.
-- Review `README.md`, `SOP.md`, and `RUNBOOK.md` for local absolute paths or
-  other personal information. Replace such paths with repository-relative
-  paths or generic instructions.
-- Review `app-users/` and every other file you intend to stage. This project
-  currently has an `app-users/server.js`; do not add real user records, database
-  dumps, credentials, or private keys.
-- `node_modules/`, `cmdhistory.txt`, `tempCodeRunnerFile.js`, `temp`, and
-  `Untitled-*.txt` are local/generated artifacts. The root `.gitignore` excludes
-  them.
-- `.gitignore` prevents new matching files from being staged; it cannot remove
-  a file that was already committed or override an explicit `git add -f`.
+The first push has already completed. Do not repeat `git init`, `git remote add`,
+or the initial commit commands unless starting from a separate, uninitialized
+copy of the project.
 
-If a real secret was ever committed, deleting it in a later commit is not
-enough: rotate/revoke it. Follow GitHub's guidance for removing sensitive data
-from repository history if history cleanup is also required.
+## 1. One-time security and content review
 
-## 1. Prerequisites
+Before publishing or changing a repository from private to public:
 
-Install Git for Windows and sign in to GitHub in a browser. GitHub CLI (`gh`)
-is optional; Git Credential Manager can authenticate Git pushes through the
-browser. Never put a password or personal access token directly in a remote
-URL or commit it to a file.
+- Check that `.env` is not staged or tracked. The Compose files read passwords
+  from `.env`; `.env.example` contains only a placeholder and is safe to share.
+- Check the staged changes for credentials, real personal data, database dumps,
+  private keys, machine-specific paths, and files that should stay local.
+- `node_modules/`, command history, temporary editor files, local databases,
+  keys, and local override files are excluded by `.gitignore`.
+- `.gitignore` does not remove files already tracked, and it cannot prevent an
+  explicit `git add -f`.
+- A secret committed at any point can remain in Git history. Rotate/revoke a
+  real exposed secret; deleting it in a later commit is not sufficient.
 
-Check Git and move to the project directory:
+The first commit records the email configured for its author. That address is
+visible in the GitHub commit metadata. To use GitHub's noreply email for future
+commits, configure it locally (replace the example with the address shown in
+your GitHub email settings):
 
 ```powershell
-git --version
+git config user.email "YOUR-GITHUB-NOREPLY-EMAIL"
+```
+
+This changes future commits only; it does not rewrite the existing commit.
+
+## 2. Open PowerShell in the project folder
+
+Replace the example path if you moved the folder:
+
+```powershell
 Set-Location "C:\path\to\docker-testapp-main"
 Get-Location
 ```
 
-The current project folder is not yet a Git repository. If `git status` says
-this is not a Git repository, continue with the new-repository workflow below.
-
-## 2. Prepare and review the project
-
-Inspect the files and validate the Node.js entry point:
+`Get-Location` confirms which folder Git commands will operate on. Confirm that
+the expected project files are present:
 
 ```powershell
 Get-ChildItem -Force
-node --check .\server.js
 ```
 
-Edit any local-only paths or unsafe example configuration identified above.
-Keep actual credentials out of source, YAML, Markdown, and GitHub. Use local
-environment variables or a secret manager for real credentials.
+## 3. Verify the existing local-to-GitHub connection
 
-The project folder is not yet a Git repository, so Git status commands will
-work only after the initialization step below.
-
-## 3. Create an empty GitHub repository
-
-On GitHub:
-
-1. Select **New repository**.
-2. Choose a repository name, for example `docker-testapp-main`.
-3. Choose **Private** initially if you have not completed the public-release
-   review.
-4. Do not initialize it with a README, license, or `.gitignore`. This project
-   already has files, so an empty remote avoids an unrelated first-commit
-   history conflict.
-5. Create the repository and copy its HTTPS URL. It will look like:
-   `https://github.com/YOUR-USERNAME/docker-testapp-main.git`.
-
-## 4. Initialize Git and create the first commit
-
-Run these commands in the project directory:
+These are the commands for the repository as it is configured now:
 
 ```powershell
-git init -b main
-git status --short --ignored
+git status --short --branch
+git remote -v
+git log -1 --oneline
+git ls-remote --heads origin
+```
+
+What to look for:
+
+- `git status` should show `main...origin/main` and no changed files when fully
+  synchronized.
+- `git remote -v` should list
+  `https://github.com/shalthoor/docker-testapp-main.git` for fetch and push.
+- `git log -1` shows the latest local commit.
+- `git ls-remote --heads origin` shows the commit ID currently stored on the
+  remote `main` branch.
+
+The local `main` commit and remote `main` commit IDs should match. The current
+remote was checked and its `main` branch points to
+`2ef1a517ce85312888a7aa45c0a9b229d0001207`, matching the local initial commit.
+
+## 4. Confirm the files on GitHub
+
+Open `https://github.com/shalthoor/docker-testapp-main` in a browser. Select
+the `main` branch and check that the repository contains the expected source
+and project files, including:
+
+- `server.js`, `app-users/server.js`, and `public/`
+- `package.json`, `package-lock.json`, and `Dockerfile`
+- `.gitignore` and `.env.example`
+- the MongoDB YAML files and the project README/runbooks
+
+The repository's `main` commit and root file listing were checked against the
+local project. The committed tree contains the expected app, frontend,
+dependency manifests, Docker files, Compose files, and documentation. This is a
+source-control/file-presence check, not a remote deployment or a live runtime
+test.
+
+Optional CLI verification, if GitHub CLI is installed and authenticated:
+
+```powershell
+gh repo view shalthoor/docker-testapp-main --json name,url,visibility,defaultBranchRef
+gh api repos/shalthoor/docker-testapp-main/contents --jq '.[].name'
+```
+
+The first command reports repository visibility and the default branch. The
+second prints the files in the remote repository root.
+
+## 5. Test the project before publishing later changes
+
+From the project folder, check both JavaScript entry files:
+
+```powershell
+node --check .\server.js
+node --check .\app-users\server.js
+```
+
+If Docker Desktop and Compose are installed, validate each MongoDB Compose
+configuration without starting containers. A placeholder value is used only
+for validation; do not use it as an actual password:
+
+```powershell
+$env:MONGO_ROOT_PASSWORD = "validation-only-not-a-real-secret"
+docker compose -f .\mongodb-basic.yaml config --quiet
+docker compose -f .\mongodb-healthcheck.yaml config --quiet
+docker compose -f .\mongodb-volume.yaml config --quiet
+docker compose -f .\mongodb.yaml config --quiet
+Remove-Item Env:\MONGO_ROOT_PASSWORD
+```
+
+For local Compose use, copy the example and edit the ignored local `.env` file
+with a strong password before starting MongoDB:
+
+```powershell
+Copy-Item .\.env.example .\.env
+notepad .\.env
+docker compose -f .\mongodb-volume.yaml config --quiet
+```
+
+Never stage or publish `.env`.
+
+## 6. Publish new changes to the existing repository
+
+After making a change, inspect the worktree and review the actual edits before
+staging:
+
+```powershell
+git status --short
+git diff
+```
+
+`git status` lists modified and untracked files. `git diff` shows edits to
+already tracked files. To inspect a new untracked file, open it directly or add
+it and inspect the staged diff before committing.
+
+Stage the intended changes:
+
+```powershell
 git add -A
 git status --short
 git diff --cached --check
@@ -90,45 +167,27 @@ git diff --cached --stat
 git diff --cached
 ```
 
-Review the staged file list and diff before committing. Confirm that there are
-no credentials, personal data, database files, local paths you do not want
-public, or generated files. If anything should not be committed, remove it from
-the index and update `.gitignore` as appropriate:
+`git add -A` stages additions, edits, and removals. The cached commands check
+and show exactly what the next commit will contain. If a file should not be
+included, unstage just that file while preserving it on disk:
 
 ```powershell
 git restore --staged -- path\to\file
 ```
 
-After the staged review is clean, set your commit identity if Git has not
-already been configured on this computer, then commit:
+Do not run `git restore --staged .` to undo an initial add before the first
+commit; with no existing `HEAD`, it may fail. Review and unstage specific files
+instead.
+
+Once the staged diff is correct, create a commit and push it:
 
 ```powershell
-git config user.name "Your Name"
-git config user.email "YOUR-EMAIL-OR-GITHUB-NOREPLY-EMAIL"
-git commit -m "Initial project import"
+git commit -m "Describe the change"
+git push
 ```
 
-The `user.email` setting is recorded in commits. Use GitHub's noreply email if
-you do not want your personal email exposed.
-
-
-
-
-
-## 5. Connect the local project to GitHub and push
-
-Replace the example URL with the URL copied from your own GitHub repository:
-
-```powershell
-git remote add origin https://github.com/YOUR-USERNAME/docker-testapp-main.git
-git remote -v
-git push -u origin main
-```
-
-Complete the browser sign-in prompt if Git Credential Manager opens it. Do not
-paste a token into chat, a script, or the repository.
-
-## 6. Verify the published repository
+`git commit` saves a snapshot locally. `git push` uploads the new commit to the
+configured remote. Verify the result:
 
 ```powershell
 git status --short --branch
@@ -136,80 +195,106 @@ git log -1 --oneline
 git ls-remote --heads origin
 ```
 
-Open the repository page in GitHub and confirm that the expected project files
-are present, `node_modules/` and local artifacts are absent, and the visibility
-setting is correct. If the repository should be public, complete GitHub's
-secret/security checks and inspect the files again before changing visibility.
+The branch should again show `main...origin/main` with no pending changes, and
+the local and remote `main` commit IDs should match.
 
-## 7. Publish later changes
+## 7. First-time publishing from a separate local copy
 
-After editing files:
+Use this section only for a project copy that is not yet a Git repository.
+Create an empty GitHub repository first. Do not initialize it with a README,
+license, or `.gitignore` when uploading an existing project.
+
+From the project directory:
 
 ```powershell
-git status --short
-git diff
-git add -A
-git diff --cached --check
-git diff --cached
-git commit -m "Describe the change"
-git push
+git init -b main
+git status --short --ignored
 ```
 
-Always review the staged diff before committing. GitHub receives commits, not
-only the latest file contents; never commit a secret even temporarily.
+`git init` creates the local repository and `main` branch. `git status` lets you
+check that ignored files such as `node_modules/` and `.env` will not be added.
+Stage and review:
+
+```powershell
+git add -A
+git status --short
+git diff --cached --check
+git diff --cached --stat
+git diff --cached
+```
+
+Set the commit author if it is not already configured:
+
+```powershell
+git config user.name "Your Name"
+git config user.email "YOUR-GITHUB-NOREPLY-EMAIL"
+```
+
+These settings identify commits; they do not sign in to GitHub. Commit the
+reviewed files:
+
+```powershell
+git commit -m "Initial project import"
+```
+
+Connect the empty GitHub repository. For this project, the remote URL is:
+
+```powershell
+git remote add origin https://github.com/shalthoor/docker-testapp-main.git
+git remote -v
+git push -u origin main
+```
+
+`-u` sets `origin/main` as the upstream for local `main`, so later pushes can
+use `git push` without repeating the remote and branch names. Authenticate using
+the browser flow from Git Credential Manager if prompted. Never place a
+password or access token in the URL or source files.
 
 ## 8. Common problems
 
-### `git` is not recognized
-
-Install Git for Windows, close and reopen PowerShell, then verify with
-`git --version`.
-
-### Authentication failed
-
-Use the browser sign-in flow from Git Credential Manager, or install and
-authenticate the GitHub CLI. Do not use a GitHub account password for Git over
-HTTPS.
-
 ### `remote origin already exists`
 
-Inspect the current remote before changing it:
+Check the current URL before changing it:
 
 ```powershell
 git remote -v
 ```
 
-If it is incorrect, set the intended URL:
+If it is wrong, update it:
 
 ```powershell
-git remote set-url origin https://github.com/YOUR-USERNAME/docker-testapp-main.git
+git remote set-url origin https://github.com/shalthoor/docker-testapp-main.git
 ```
 
-### Push rejected because the GitHub repository already has commits
+### Push rejected because remote has other commits
 
-This usually means the remote was initialized with a README or another file.
-Do not force-push. First inspect the remote and local histories; for a new
-repository, the simplest safe option is to create a separate empty GitHub
-repository and use its URL.
+The GitHub repository may have been initialized with files or commits. Do not
+force-push. Inspect the local and remote histories first. For a new repository,
+using an empty GitHub repository avoids this conflict.
 
-### A file was already committed despite `.gitignore`
+### A file is tracked despite `.gitignore`
 
-`.gitignore` does not untrack an already committed file. Remove it from Git
-tracking while keeping the local copy:
+Ignore rules do not untrack files already added. To stop tracking a particular
+file while keeping its local copy:
 
 ```powershell
 git rm --cached -- path\to\file
 ```
 
-Then add the ignore rule, review the staged diff, commit, and push. If the file
-contained a real secret, rotate it immediately and address the exposed history;
-do not treat this removal as secret revocation.
+Then update `.gitignore`, review the staged diff, commit, and push. If that file
+contained a real credential, rotate it and address the exposed Git history.
+
+### Authentication failed
+
+Use the browser sign-in flow through Git Credential Manager, or install and
+authenticate GitHub CLI. A GitHub account password is not the HTTPS Git
+authentication method.
 
 ## Completion checklist
 
-- [ ] GitHub repository created with intended visibility.
-- [ ] Local paths and personal information reviewed.
-- [ ] No real credentials, private data, or database dumps are staged.
-- [ ] Staged changes reviewed with `git diff --cached`.
-- [ ] Initial commit created and pushed to `main`.
-- [ ] GitHub page and `git status` confirm the push succeeded.
+- [x] `origin` points to `https://github.com/shalthoor/docker-testapp-main.git`.
+- [x] Local branch `main` is pushed to remote branch `main`.
+- [x] Remote commit matches the local initial commit.
+- [x] Expected source, dependency, Docker, MongoDB, and documentation files are
+  present in the remote repository.
+- [ ] For any later changes: review, stage, commit, push, and verify again.
