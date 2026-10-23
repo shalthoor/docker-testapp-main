@@ -1,0 +1,58 @@
+# Installed dependencies and build output
+node_modules/
+dist/
+coverage/
+
+# Local environment files (keep the safe template)
+.env
+.env.*
+!.env.example
+*.local
+.npmrc
+!.npmrc.example
+docker-compose.override.yml
+docker-compose.override.yaml
+
+# Credentials, private keys, and local secret stores
+secrets/
+.ssh/
+.aws/
+.azure/
+.kube/
+*.key
+*.pem
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+credentials*.json
+service-account*.json
+
+# Local databases, dumps, and persisted container data
+*.db
+*.sqlite
+*.sqlite3
+*.dump
+*.bson
+*.tfstate
+*.tfstate.*
+/data/
+/mongo-data/
+/docker-volume/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Local/editor artifacts
+cmdhistory.txt
+temp
+tempCodeRunnerFile.js
+Untitled-*.txt
+.vscode/
+.idea/
+
+# Operating system files
+.DS_Store
+Thumbs.db
+Desktop.ini

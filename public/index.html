@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="./style.css" type="text/css" />
+    <title>Home Page</title>
+</head>
+<body>
+    <h1>Hi student, Welcome to XYZ University!</h1>
+    <p>You can sign up to the platform to access all important notes & lectures.</p>
+
+    <form id="signupForm">
+        <div class="field">
+            <label for="db">Database: </label>
+            <select name="db" id="db">
+                <option value="college">college</option>
+                <option value="healthcheck" selected>healthcheck</option>
+            </select>
+        </div>
+        <div class="field">
+            <label for="email">Email: </label>
+            <input type="text" placeholder="jane@email.com" name="email">
+        </div>
+        <div class="field">
+        <label for="username">Username: </label>
+            <input type="text" placeholder="Jane Doe" name="username">
+        </div>
+        <div class="field">
+            <label for="password">Password: </label>
+            <input type="password" placeholder="password" name="password">
+        </div>
+
+        <button id="formBtn">Create Account</button>
+        <p id="formStatus" aria-live="polite"></p>
+    </form>
+
+    <script>
+        const signupForm = document.getElementById('signupForm');
+        const formStatus = document.getElementById('formStatus');
+
+        signupForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            formStatus.textContent = 'Creating account...';
+            formStatus.style.color = '#333';
+
+            try {
+                const formData = new FormData(signupForm);
+                const response = await fetch('/addUser', {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json'
+                    },
+                    body: new URLSearchParams(formData)
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || 'Failed to create account');
+                }
+
+                formStatus.textContent = `Account created successfully in ${result.db} / ${result.collection}.`;
+                formStatus.style.color = 'green';
+                signupForm.reset();
+            } catch (error) {
+                formStatus.textContent = error.message;
+                formStatus.style.color = 'red';
+            }
+        });
+    </script>
+</body>
+
+</html>

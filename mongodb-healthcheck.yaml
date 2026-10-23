@@ -1,0 +1,45 @@
+services:
+
+  mongo:
+    image: mongo
+
+    ports:
+      - "27017:27017"
+
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?Set MONGO_ROOT_PASSWORD in your local .env file}
+
+    volumes:
+      - myvolume:/data/db
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mongosh --quiet --host localhost --port 27017 --username \"$$MONGO_INITDB_ROOT_USERNAME\" --password \"$$MONGO_INITDB_ROOT_PASSWORD\" --authenticationDatabase admin --eval \"db.adminCommand('ping').ok\""
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+
+  mongo-express:
+    image: mongo-express
+
+    ports:
+      - "8081:8081"
+
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: ${MONGO_ROOT_USERNAME:-admin}
+      ME_CONFIG_MONGODB_ADMINPASSWORD: ${MONGO_ROOT_PASSWORD:?Set MONGO_ROOT_PASSWORD in your local .env file}
+      ME_CONFIG_MONGODB_URL: "mongodb://mongo:27017/"
+
+
+volumes:
+  myvolume:
